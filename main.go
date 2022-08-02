@@ -7,35 +7,50 @@ import (
 	"weatherstack/weatherstack"
 )
 
-// После регистрации получен ключ доступа к АПИ e0aeb5680a2db97d039d4370f8979728
-
 func main() {
-	weatherClient, err := weatherstack.NewClient("e0aeb5680a2db97d039d4370f8979728", time.Second*10)
+
+	weatherClient, err := weatherstack.NewClient(time.Second * 10)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	if str, err := weatherClient.GetWeather("Lon_don"); err != nil {
-		log.Println(err)
-	} else {
-		fmt.Println(str)
+	// Получаем JWT токен (если регистрация валидна)
+	err = weatherClient.Login("toxin-air", "rOTlZqgDseCk")
+	if err != nil {
+		log.Fatalf("Authorization error")
 	}
 
-	if str, err := weatherClient.GetWeather("London"); err != nil {
-		log.Println(err)
+	// Получаем списки локаций, и находим ID Киева
+	fmt.Println()
+	var ID int
+	lct, err := weatherClient.GetLocations("Kiev")
+	if err != nil {
+		log.Fatal(err)
 	} else {
-		fmt.Println(str)
+		for _, lo := range lct.Locations {
+			fmt.Printf("Name: %s (%s)\t\t ID = %d\n", lo.Name, lo.Country, lo.ID)
+			if lo.Name == "Kyiv" && lo.Country == "Ukraine" {
+				ID = lo.ID
+			}
+		}
+	}
+	if ID == 0 {
+		log.Fatal("Kyiv Ukraine not found")
 	}
 
-	if str, err := weatherClient.GetWeather("Kiev"); err != nil {
+	// Получаем погоду в Киеве
+	fmt.Println()
+	if fd, err := weatherClient.GetWeather(ID); err != nil {
 		log.Println(err)
 	} else {
-		fmt.Println(str)
+		fmt.Println("Forecast: Kyiv (Ukraine)")
+		for _, forecast := range fd.ForecastDaily {
+			fmt.Printf("%s:\t t.min = %d  t.max = %d\n", forecast.Date, forecast.MinTemp, forecast.MaxTemp)
+
+		}
 	}
 
-	if str, err := weatherClient.GetWeatherForecast("Kiev", 3); err != nil {
-		log.Println(err)
-	} else {
-		fmt.Println(str)
-	}
+	// Завершение (Удаление токена)
+	fmt.Println()
+	weatherClient.Logout()
 }
